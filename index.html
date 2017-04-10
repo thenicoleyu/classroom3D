@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - effects - anaglyph</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				background:#777;
+				padding:0;
+				margin:0;
+				font-weight: bold;
+				overflow:hidden;
+			}
+
+			#info {
+				position: absolute;
+				top: 0px; width: 100%;
+				color: #ffffff;
+				padding: 5px;
+				font-family:Monospace;
+				font-size:13px;
+				text-align:center;
+				z-index:1000;
+			}
+
+			a {
+				color: #ffffff;
+			}
+
+			.button {
+				text-align: center;
+				width: 15%;
+				padding: 1em;
+				border-radius: 2em;
+				color: #fff;
+				position: absolute;
+
+				cursor: pointer;
+				background-color: rgba(245, 55, 55, 0.71);
+			}
+
+			#change-color {
+				top: 2em;
+				left: 2em;
+			}
+
+			#oldie a { color:#da0 }
+		</style>
+	</head>
+
+	<body>
+		<div id="change-color" class="button">Change Scenery</div>
+
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+
+		<script src="build_three_js.js"></script>
+
+		<script src="effects_AnaglyphEffect_js.js"></script>
+
+		<script src="Detector_js.js"></script>
+
+		<script>
+
+			// change color listener
+			var changeColor = document.getElementById("change-color");
+			changeColor.addEventListener("click", function () {
+				window.location.reload();
+			})
+
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+			var container;
+
+			var camera, scene, renderer, effect;
+
+			var mesh, lightMesh, geometry;
+			var spheres = [];
+
+			var directionalLight, pointLight;
+
+			var mouseX = 0;
+			var mouseY = 0;
+
+			var windowHalfX = window.innerWidth / 2;
+			var windowHalfY = window.innerHeight / 2;
+
+			document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+
+			init();
+			animate();
+
+			function init() {
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.01, 100 );
+				camera.position.z = 3;
+				camera.focalLength = 3;
+
+				var path = "images/";
+				var format = '.jpg';
+
+				function getRand(min, max) {
+					  min = Math.ceil(min);
+					  max = Math.floor(max);
+					  return Math.floor(Math.random() * (max - min + 1)) + min;
+				};
+
+				var n = getRand(1,5);
+
+				var urls = [
+					path + 'px' + n + format, path + 'nx' + n + format,
+					path + 'py' + n + format, path + 'ny' + n + format,
+					path + 'pz' + n + format, path + 'nz' + n + format
+				];
+
+
+				var textureCube = new THREE.CubeTextureLoader().load( urls );
+
+				scene = new THREE.Scene();
+				scene.background = textureCube;
+
+				var geometry = new THREE.SphereBufferGeometry( 0.1, 32, 16 );
+
+				var ary = [0xfcffb0, 0xffffff, 0xd3d7ff, 0xe3fff2];
+
+
+				function getRandom(min, max) {
+					  min = Math.ceil(min);
+					  max = Math.floor(max);
+					  return Math.floor(Math.random() * (max - min + 1)) + min;
+				}
+				var i = getRandom(0,3);
+
+				var material = new THREE.MeshBasicMaterial( { color: ary[i], envMap: textureCube } );
+
+
+
+
+
+				for ( var i = 0; i < 500; i ++ ) {
+
+					var mesh = new THREE.Mesh( geometry, material );
+
+					mesh.position.x = Math.random() * 10 - 5;
+					mesh.position.y = Math.random() * 10 - 5;
+					mesh.position.z = Math.random() * 10 - 5;
+
+					mesh.scale.x = mesh.scale.y = mesh.scale.z = Math.random() * 3 + 1;
+
+					scene.add( mesh );
+
+					spheres.push( mesh );
+
+				}
+
+				//
+
+				renderer = new THREE.WebGLRenderer( { antialias: false } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				container.appendChild( renderer.domElement );
+
+				var width = window.innerWidth || 2;
+				var height = window.innerHeight || 2;
+
+				effect = new THREE.AnaglyphEffect( renderer );
+				effect.setSize( width, height );
+
+				//
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+			}
+
+			function onWindowResize() {
+
+				windowHalfX = window.innerWidth / 2;
+				windowHalfY = window.innerHeight / 2;
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				effect.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			function onDocumentMouseMove(event) {
+
+				mouseX = ( event.clientX - windowHalfX ) / 80;
+				mouseY = ( event.clientY - windowHalfY ) / 80;
+
+			}
+
+			//
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+
+				render();
+
+			}
+
+			function render() {
+
+				var timer = 0.0001 * Date.now();
+
+				camera.position.x += ( mouseX - camera.position.x ) * .05;
+				camera.position.y += ( - mouseY - camera.position.y ) * .05;
+
+				camera.lookAt( scene.position );
+
+				for ( var i = 0, il = spheres.length; i < il; i ++ ) {
+
+					var sphere = spheres[ i ];
+
+					sphere.position.x = 5 * Math.cos( timer + i * 2);
+					sphere.position.y = 5 * Math.sin( timer + i * 2.1 );
+
+				}
+
+				effect.render( scene, camera );
+
+
+
+			}
+
+			// var iScrollPos = 0;
+			// $(window).scroll(function () {
+   //  			var iCurScrollPos = $(this).scrollTop();
+
+   //  			if (iCurScrollPos > iScrollPos) {
+   //  				console.log("Hi");
+   //  			};
+   //  			iScrollPos = iCurScrollPos;
+			// });
+
+		</script>
+
+	</body>
+</html>
